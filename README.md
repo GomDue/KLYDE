@@ -29,7 +29,7 @@ Kafka Topic  →  Flink  →  데이터 처리/변환   →  PostgreSQL(DB 저�
 
 ```bash
 sudo apt-get update
-sudo apt-get install postgresql postgresql-contrib
+sudo apt-get install postgresql postgresql-contrib postgresql-16-vector
 ```
 
 2. **서비스 상태 확인**  
