@@ -1,93 +1,127 @@
-# data-pjt
+# SSAFY 맞춤형 뉴스 데이터 파이프라인 환경 설정 관통 PJT(1) 가이드 정리
+
+## 최종 목표
+[Extract]                   [Transform]             [Load]
+Kafka Topic  →  Flink  →  데이터 처리/변환   →  PostgreSQL(DB 저장)
+(JSON or RSS) (스트리밍)  (카테고리 분류)    →  Elasticsearch(검색)
+                  │        (키워드 추출)      
+                  │        (벡터 임베딩)
+                  │
+                  ↓            
+                HDFS  →  Spark  →  리포트 생성  →  HDFS 아카이브
+              (임시저장)  (배치)     (pdf)          (장기 보관)
+
+> **목차 (원본 README의 목차와 실제 내용의 순서를 모두 반영함)**
+>
+> 1. PostgreSQL 설치 및 설정
+> 2. 필요한 라이브러리 설치
+
+---
+
+## 1. PostgreSQL 설치 및 설정
+
+### 1.1. PostgreSQL 설치 (Linux - Ubuntu)
+
+1. **PostgreSQL 설치**  
+   터미널에서 아래 명령어를 실행하여 PostgreSQL과 추가 패키지를 설치합니다.
+
+   ```bash
+   sudo apt-get update
+   sudo apt-get install postgresql postgresql-contrib
+   ```
+
+2. **서비스 상태 확인**  
+   PostgreSQL 서비스가 정상 실행 중인지 확인합니다.
+
+   ```bash
+   sudo service postgresql status
+   ```
+
+### 1.2. PostgreSQL 데이터베이스 설정
+
+1. **PostgreSQL 접속**  
+   기본 사용자 `postgres`로 전환한 후 `psql` 셸에 접속합니다.
+   PostgreSQL 설치 시 만들어지는 **기본 PostgreSQL 사용자 postgres**는 리눅스의 postgres 계정으로만 접속이 허용되어 있음
+
+   ```bash
+   sudo -i -u postgres
+   psql
+   ```
+
+2. **데이터베이스 생성**  
+   `news` 데이터베이스를 생성합니다.
+
+   ```sql
+   CREATE DATABASE news;
+   ```
+
+3. **사용자 생성 및 권한 부여**  
+   SSAFY 전용 사용자 `ssafyuser`를 생성하고, `news` 데이터베이스에 대한 모든 권한을 부여합니다.
+
+   ```sql
+   CREATE USER ssafyuser WITH PASSWORD 'ssafy';
+   GRANT ALL PRIVILEGES ON DATABASE news TO ssafyuser;
+   ```
+
+sudo vi /etc/postgresql/16/main/pg_hba.conf
+
+# TYPE  DATABASE        USER            ADDRESS                 METHOD
+local   all             all                                     md5
+host    all             all             127.0.0.1/32            md5
+host    all             all             ::1/128                 md5
+
+4. **테이블 생성**
+
+   1. **데이터베이스 변경**  
+      생성한 `news` 데이터베이스로 접속합니다.
+
+      ```bash
+      \c news
+      ```
+
+   2. **pgvector 확장 설치 (최초 한 번 실행) 및 테이블 생성**  
+      아래 SQL 명령어를 실행하여 `pgvector` 확장을 설치하고, `news_article` 테이블을 생성합니다.
+
+      ```sql
+      -- pgvector 확장이 필요한 경우 (최초 한 번만 실행)
+      CREATE EXTENSION IF NOT EXISTS vector;
+
+      -- news_article 테이블 생성
+      CREATE TABLE news_article (
+          id SERIAL PRIMARY KEY,
+          title VARCHAR(200) NOT NULL,
+          writer VARCHAR(255) NOT NULL,
+          write_date TIMESTAMP NOT NULL,
+          category VARCHAR(50) NOT NULL,
+          content TEXT NOT NULL,
+          url VARCHAR(200) UNIQUE NOT NULL,
+          keywords JSON DEFAULT '[]'::json,
+          embedding VECTOR(1536) NULL 
+      );
+      ```
+ # 이후에는 NOT NULL쓸 것
+   exit을 통해 터미널을 나올 수 있습니다.
+
+
+-- 5. 권한 부여
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+GRANT ALL ON TABLES TO ssafyuser;
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+GRANT ALL ON SEQUENCES TO ssafyuser;
+GRANT CREATE ON SCHEMA public TO ssafyuser;
 
 
 
-## Getting started
+## 2. 필요한 라이브러리 설치
+python3.11 -m venv ~/venvs/pjt
+source ~/venvs/pjt/bin/activate
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+pip install -r requirements.txt
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+---
 
-## Add your files
+## 마무리
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
-
-```
-cd existing_repo
-git remote add origin https://lab.ssafy.com/s13/b04/data-pjt.git
-git branch -M master
-git push -uf origin master
-```
-
-## Integrate with your tools
-
-- [ ] [Set up project integrations](https://lab.ssafy.com/s13/b04/data-pjt/-/settings/integrations)
-
-## Collaborate with your team
-
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
-
-## Test and Deploy
-
-Use the built-in continuous integration in GitLab.
-
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
-
-***
-
-# Editing this README
-
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
-
-## Suggestions for a good README
-
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
-
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
-
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
-
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+위의 단계들을 차례대로 진행하고 rss의 news를 잘 수집하고 저장하는 것이 목표입니다. 
+이를 시작으로 이후 SSAFY 맞춤형 뉴스 데이터 파이프라인 환경을 지속적으로 개발하며 PostgreSQL, Hadoop, Kafka, Airflow, elasticsearch를 이용해 성공적으로 프로젝트를 구축하는 과정을 거치게 됩니다.
