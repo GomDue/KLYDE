@@ -15,10 +15,46 @@
 - **사용 도구**: Python + feedparser + psycopg2 + dateutil  
 - 각 플랫폼의 RSS 피드를 파싱하여 뉴스 항목의 `title`, `link`, `description`, `published date`, `author` 등을 추출  
 - 추출된 뉴스는 PostgreSQL에 저장되며, 각 플랫폼별로 다음 테이블을 사용:
-  - `news_bbc_raw`
-  - `news_nyt_raw`
-  - `news_zdnet_raw`
-  - `news_nippon_raw`
+
+```sql
+-- BBC
+CREATE TABLE IF NOT EXISTS news_bbc_raw (
+    id SERIAL PRIMARY KEY,
+    title TEXT,
+    link TEXT UNIQUE,
+    description TEXT,
+    pubdate TEXT
+);
+
+-- NYT
+CREATE TABLE IF NOT EXISTS news_nyt_raw (
+    id SERIAL PRIMARY KEY,
+    title TEXT,
+    link TEXT UNIQUE,
+    description TEXT,
+    pubdate TEXT,
+    creator VARCHAR(100)
+);
+
+-- ZDNet Korea
+CREATE TABLE IF NOT EXISTS news_zdnet_raw (
+    id SERIAL PRIMARY KEY,
+    title TEXT,
+    link TEXT UNIQUE,
+    description TEXT,
+    pubdate TEXT,
+    author VARCHAR(100)
+);
+
+-- Nippon.com
+CREATE TABLE IF NOT EXISTS news_nippon_raw (
+    id SERIAL PRIMARY KEY,
+    title TEXT,
+    link TEXT UNIQUE,
+    description TEXT,
+    pubdate TEXT
+);
+```
 
 ---
 
