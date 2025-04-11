@@ -1,0 +1,35 @@
+# 가상환경
+venv/
+venv310/
+.env
+
+# Python 캐시
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# 로그 및 임시 파일
+*.log
+*.tmp
+*.swp
+
+# Jupyter 노트북 체크포인트
+.ipynb_checkpoints/
+
+# macOS
+.DS_Store
+
+# VSCode 설정
+.vscode/
+
+# 시스템 파일
+Thumbs.db
+
+# 결과 파일 (선택)
+*.csv
+*.json
+*.db
+
+# 파이썬 요구사항 파일은 제외하지 마세요!
+# requirements.txt
