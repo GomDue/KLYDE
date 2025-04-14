@@ -29,7 +29,7 @@ Kafka Topic  →  Flink  →  데이터 처리/변환   →  PostgreSQL(DB 저�
 
 ```bash
 sudo apt-get update
-sudo apt-get install postgresql postgresql-contrib postgresql-16-vector
+sudo apt-get install postgresql-16 postgresql-contrib-16 postgresql-16-pgvector -y  
 ```
 
 2. **서비스 상태 확인**  
@@ -111,7 +111,7 @@ GRANT CREATE ON SCHEMA public TO ssafyuser;
 ## 2. 필요한 라이브러리 설치
 
 ```bash
-python3.11 -m venv ~/venvs/data-pjt
+python3.10 -m venv ~/venvs/data-pjt
 source ~/venvs/data-pjt/bin/activate
 
 pip install -r requirements.txt
