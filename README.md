@@ -65,10 +65,18 @@ GRANT ALL PRIVILEGES ON DATABASE news TO ssafyuser;
 ```conf
 # 파일 위치: /etc/postgresql/16/main/pg_hba.conf
 
-# 아래와 같이 수정
+# "local" is for Unix domain socket connections only
 local   all             all                                     md5
+# IPv4 local connections:
 host    all             all             127.0.0.1/32            md5
+# IPv6 local connections:
 host    all             all             ::1/128                 md5
+# Allow replication connections from localhost, by a user with the
+# replication privilege.
+local   replication     all                                     md5
+host    replication     all             127.0.0.1/32            md5
+host    replication     all             ::1/128                 md5
+
 ```
 
 5. **데이터베이스 접속 및 테이블 생성성**
