@@ -114,10 +114,12 @@ GRANT ALL ON SEQUENCES TO ssafyuser;
 GRANT CREATE ON SCHEMA public TO ssafyuser;
 ```
 
-(news 데이터베이스 안에서)
+(news 데이터베이스 안에서 (news=# 인 상태))
 ```sql
 GRANT ALL PRIVILEGES ON TABLE news_article TO ssafyuser;
 GRANT ALL ON TABLE news_article TO ssafyuser;
+GRANT ALL ON SEQUENCE news_article_id_seq TO ssafyuser;
+
 ```
 
 ---
