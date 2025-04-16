@@ -79,24 +79,7 @@ host    replication     all             ::1/128                 md5
 
 ```
 
-5. **권한 부여** 
-
-```sql
-ALTER DEFAULT PRIVILEGES IN SCHEMA public
-GRANT ALL ON TABLES TO ssafyuser;
-
-ALTER DEFAULT PRIVILEGES IN SCHEMA public
-GRANT ALL ON SEQUENCES TO ssafyuser;
-GRANT CREATE ON SCHEMA public TO ssafyuser;
-```
-
-(데이터베이스 접속 및 생성을 먼저 했다면 해당 코드 실행)
-```sql
-GRANT ALL PRIVILEGES ON TABLE news_article TO ssafyuser;
-GRANT ALL ON TABLE news_article TO ssafyuser;
-```
-
-6. **데이터베이스 접속 및 테이블 생성**
+5. **데이터베이스 접속 및 테이블 생성**
 
 ```bash
 \c news
@@ -118,6 +101,23 @@ CREATE TABLE news_article (
     keywords JSON DEFAULT '[]'::json,
     embedding VECTOR(1536) NULL
 );
+```
+
+6. **권한 부여** 
+
+```sql
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+GRANT ALL ON TABLES TO ssafyuser;
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+GRANT ALL ON SEQUENCES TO ssafyuser;
+GRANT CREATE ON SCHEMA public TO ssafyuser;
+```
+
+(news 데이터베이스 안에서)
+```sql
+GRANT ALL PRIVILEGES ON TABLE news_article TO ssafyuser;
+GRANT ALL ON TABLE news_article TO ssafyuser;
 ```
 
 ---
