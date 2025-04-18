@@ -7,7 +7,7 @@ rss_url = "https://www.nippon.com/en/feed/"
 
 conn = psycopg2.connect(
     host="localhost",
-    dbname="news_db",
+    dbname="news",
     user="postgres",
     password="1234",
     port=5432

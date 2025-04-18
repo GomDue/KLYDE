@@ -7,7 +7,7 @@ rss_url = "http://feeds.bbci.co.uk/news/rss.xml"
 
 conn = psycopg2.connect(
     host="localhost",
-    dbname="news_db",
+    dbname="news",
     user="postgres",
     password="1234",
     port=5432

@@ -8,7 +8,7 @@ rss_url = "https://www.zdnet.com/news/rss.xml"
 # PostgreSQL 연결
 conn = psycopg2.connect(
     host="localhost",
-    dbname="news_db",
+    dbname="news",
     user="postgres",       # 또는 news_user
     password="1234",       # 설정한 비밀번호
     port=5432
