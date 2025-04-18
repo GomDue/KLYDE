@@ -57,14 +57,39 @@ def transform_to_embedding(text: str) -> list[float]:
 
 def transform_classify_category(content):
     """
-    TODO: 해당 로직을 위의 코드와 아래의 category를 참고하여 openai 기반의 카테고리 분류가 가능한 형태로 구현하세요.
-
     텍스트 데이터 변환 - 카테고리 분류  
     뉴스 내용을 기반으로 적절한 카테고리로 분류하는 변환 로직
     """
+    text = preprocess_content(content)
 
+    categories = [
+        "IT_과학", "건강", "경제", "교육", "국제", "라이프스타일", "문화", "사건사고",
+        "사회일반", "산업", "스포츠", "여성복지", "여행레저", "연예", "정치", "지역", "취미"
+    ]
 
-    if model_output not in ["IT_과학", "건강", "경제", "교육", "국제", "라이프스타일", "문화", "사건사고", "사회일반", "산업", "스포츠", "여성복지", "여행레저", "연예", "정치", "지역", "취미"]:
+    prompt = f"""다음 뉴스 내용을 가장 적절한 카테고리로 분류해 주세요.
+                가능한 카테고리 목록은 다음과 같습니다:
+                {', '.join(categories)}
+
+                뉴스 내용:
+                {text}
+
+                반드시 위 목록에서 하나만 선택해서 출력해주세요. 다른 설명 없이 카테고리 이름만 출력해주세요."""
+
+    client = OpenAI()
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "당신은 텍스트를 분류하는 AI입니다. 주어진 뉴스 내용에 가장 적절한 카테고리를 정확히 하나 선택하세요."},
+            {"role": "user", "content": prompt}
+        ],
+        max_tokens=20
+    )
+
+    model_output = response.choices[0].message.content.strip()
+
+    if model_output not in categories:
         model_output = "미분류"
 
     return model_output
+
