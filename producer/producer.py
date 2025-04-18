@@ -11,7 +11,7 @@ producer = KafkaProducer(
 )
 
 seen_links = set()
-RSS_FEED_URL = 'https://www.khan.co.kr/rss/rssdata/kh_news.xml'
+RSS_FEED_URL = 'http://feeds.bbci.co.uk/news/rss.xml'
 TOPIC_NAME = 'news_topic'
 
 def fetch_and_send_articles():
@@ -24,9 +24,11 @@ def fetch_and_send_articles():
 
         try:
             res = requests.get(link)
-            soup = BeautifulSoup(res.content, 'html.parser')
-            content = soup.find('div', class_='art_body')
-            article_text = content.get_text(strip=True) if content else '본문 없음'
+            soup = BeautifulSoup(res.text, 'html.parser')
+            paragraphs = soup.select('article div[data-component="text-block"] p')
+            article_text = ' '.join(p.get_text(strip=True) for p in paragraphs)
+            if not article_text:
+                article_text = '본문 없음'
 
             article_data = {
                 'title': entry.title,
