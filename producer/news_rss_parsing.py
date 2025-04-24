@@ -1,7 +1,7 @@
 import psycopg2
 from datetime import datetime
 
-# 연결 설정
+# PostgreSQL 연결
 conn = psycopg2.connect(
     host="localhost",
     dbname="news",
@@ -11,15 +11,14 @@ conn = psycopg2.connect(
 )
 cursor = conn.cursor()
 
-# 통합 대상 테이블들
+# 테이블 리스트 (본문 content 컬럼 포함)
 tables = [
-    ("news_bbc_raw", "title", "link", "description", "pubdate", None, None),
-    ("news_nyt_raw", "title", "link", "description", "pubdate", "creator", None),
-    ("news_zdnet_raw", "title", "link", "description", "pubdate", "author", None),
-    ("news_nippon_raw", "title", "link", "description", "pubdate", None, None)
+    ("news_bbc_raw", "title", "link", "content", "pubdate", None, None),
+    ("news_nyt_raw", "title", "link", "content", "pubdate", "creator", None),
+    ("news_zdnet_raw", "title", "link", "content", "pubdate", "author", None),
+    ("news_nippon_raw", "title", "link", "content", "pubdate", None, None)
 ]
 
-# 테이블마다 SELECT해서 news_article로 INSERT
 for tbl, title_col, url_col, content_col, date_col, writer_col, category_col in tables:
     writer_expr = f"'None'" if writer_col is None else f"COALESCE({writer_col}, 'None')"
     category_expr = f"'None'" if category_col is None else f"COALESCE({category_col}, 'None')"
@@ -28,6 +27,7 @@ for tbl, title_col, url_col, content_col, date_col, writer_col, category_col in 
         SELECT {title_col}, {url_col}, {content_col}, {date_col},
                {writer_expr} AS writer, {category_expr} AS category
         FROM {tbl}
+        WHERE {content_col} IS NOT NULL
     """
     cursor.execute(query)
     rows = cursor.fetchall()
@@ -35,7 +35,11 @@ for tbl, title_col, url_col, content_col, date_col, writer_col, category_col in 
     for row in rows:
         title, url, content, date_str, writer, category = row
         try:
-            write_date = datetime.strptime(date_str, '%a, %d %b %Y %H:%M:%S %Z') if date_str else datetime.now()
+            # 문자열일 경우 파싱, 아니면 그대로 사용
+            if isinstance(date_str, str):
+                write_date = datetime.strptime(date_str, '%a, %d %b %Y %H:%M:%S %Z')
+            else:
+                write_date = date_str or datetime.now()
         except:
             write_date = datetime.now()
 
@@ -49,4 +53,4 @@ conn.commit()
 cursor.close()
 conn.close()
 
-print("news_article 테이블 통합 완료!")
+print("news_article 테이블 통합 완료 (본문 포함)")
