@@ -1,5 +1,7 @@
+import json
 import psycopg2
 from datetime import datetime
+import preprocessing
 
 # PostgreSQL 연결
 conn = psycopg2.connect(
@@ -27,13 +29,15 @@ for tbl, title_col, url_col, content_col, date_col, writer_col, category_col in 
         SELECT {title_col}, {url_col}, {content_col}, {date_col},
                {writer_expr} AS writer, {category_expr} AS category
         FROM {tbl}
-        WHERE {content_col} IS NOT NULL
     """
     cursor.execute(query)
     rows = cursor.fetchall()
 
-    for row in rows:
-        title, url, content, date_str, writer, category = row
+    print(rows)
+
+    for title, url, content, date_str, writer, category in rows:
+        print(f"[DEBUG] 처리 중인 기사: {title}")
+
         try:
             # 문자열일 경우 파싱, 아니면 그대로 사용
             if isinstance(date_str, str):
@@ -43,13 +47,19 @@ for tbl, title_col, url_col, content_col, date_col, writer_col, category_col in 
         except:
             write_date = datetime.now()
 
-        cursor.execute("""
-            INSERT INTO news_article (title, writer, write_date, category, content, url)
-            VALUES (%s, %s, %s, %s, %s, %s)
-            ON CONFLICT (url) DO NOTHING;
-        """, (title, writer, write_date, category, content, url))
+        preprocessing_content = preprocessing.preprocess_content(content)
 
-conn.commit()
+        category = preprocessing.transform_classify_category(preprocessing_content)
+        keywords = json.dumps(preprocessing.transform_extract_keywords(preprocessing_content))
+        embedding = preprocessing.transform_to_embedding(preprocessing_content)
+        cursor.execute("""
+            INSERT INTO news_article (title, writer, write_date, category, content, url, keywords, embedding)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
+        """, (title, writer, write_date, category, content, url, keywords, embedding))
+
+        conn.commit()
+        print(f"[DEBUG] 기사 처리 완료: {title}")
+
 cursor.close()
 conn.close()
 

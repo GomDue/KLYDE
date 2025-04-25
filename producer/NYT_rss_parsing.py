@@ -18,13 +18,13 @@ def get_nyt_article_content(link: str) -> str:
 
     try:
         driver.get(link)
-        time.sleep(3)  # JS 로딩 대기
+        time.sleep(1)  # JS 로딩 대기
         soup = BeautifulSoup(driver.page_source, 'html.parser')
 
         # 본문 파싱
         paragraphs = soup.select('section[name="articleBody"] p')
         article_text = ' '.join(p.get_text(strip=True) for p in paragraphs if p.get_text(strip=True))
-        return article_text if article_text else '본문 없음'
+        return article_text if article_text else None
 
     except Exception as e:
         print(f"[본문 크롤링 실패] {link}: {e}")
@@ -58,15 +58,15 @@ for entry in feed.entries:
     creator = entry.get('author', '')
 
     content = get_nyt_article_content(link)
-
-    try:
-        cursor.execute("""
-            INSERT INTO news_nyt_raw (title, link, description, pubDate, creator, content)
-            VALUES (%s, %s, %s, %s, %s, %s)
-            ON CONFLICT (link) DO NOTHING;
-        """, (title, link, description, pubDate, creator, content))
-    except Exception as e:
-        print(f"[NYT 저장 실패] {title}: {e}")
+    if content:
+        try:
+            cursor.execute("""
+                INSERT INTO news_nyt_raw (title, link, description, pubDate, creator, content)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                ON CONFLICT (link) DO NOTHING;
+            """, (title, link, description, pubDate, creator, content))
+        except Exception as e:
+            print(f"[NYT 저장 실패] {title}: {e}")
 
 # 종료
 conn.commit()

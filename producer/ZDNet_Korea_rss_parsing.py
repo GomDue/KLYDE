@@ -17,7 +17,7 @@ def get_zdnet_article_content(link: str) -> str:
 
     try:
         driver.get(link)
-        time.sleep(3)  # JS 렌더링 기다리기
+        time.sleep(1)  # JS 렌더링 기다리기
         soup = BeautifulSoup(driver.page_source, 'html.parser')
 
         # 본문 선택
@@ -29,7 +29,7 @@ def get_zdnet_article_content(link: str) -> str:
                 article_texts.append(text)
 
         article_text = ' '.join(article_texts)
-        return article_text if article_text else '본문 없음'
+        return article_text if article_text else None
 
     except Exception as e:
         print(f"[본문 크롤링 실패] {link}: {e}")
@@ -70,15 +70,15 @@ for entry in feed.entries:
 
     # 본문 크롤링
     content = get_zdnet_article_content(link)
-
-    try:
-        cursor.execute("""
-            INSERT INTO news_zdnet_raw (title, link, description, pubDate, author, content)
-            VALUES (%s, %s, %s, %s, %s, %s)
-            ON CONFLICT (link) DO NOTHING;
-        """, (title, link, description, pubDate, author, content))
-    except Exception as e:
-        print(f"[ZDNet Korea 저장 실패] {title}: {e}")
+    if content:
+        try:
+            cursor.execute("""
+                INSERT INTO news_zdnet_raw (title, link, description, pubDate, author, content)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                ON CONFLICT (link) DO NOTHING;
+            """, (title, link, description, pubDate, author, content))
+        except Exception as e:
+            print(f"[ZDNet Korea 저장 실패] {title}: {e}")
 
 # 종료
 conn.commit()
