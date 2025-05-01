@@ -33,7 +33,7 @@ with DAG(
     notify_report_generated = BashOperator(
         task_id='notify_report_generated',
         bash_command=(
-            'echo "리포트가 생성되었습니다: 이메일 보내기"'
+            'echo "리포트가 생성되었습니다: {{ ds }} 날짜의 이메일 보내기 "'
         )
     )
 
