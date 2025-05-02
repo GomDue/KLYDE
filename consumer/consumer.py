@@ -1,3 +1,5 @@
+import os
+from datetime import datetime 
 import json
 import psycopg2
 from dateutil import parser as date_parser
@@ -48,6 +50,34 @@ def insert_article(data):
     except Exception as e:
         print(f"[DB 저장 실패] {e}")
 
+
+def save_json_to_local(processed):
+    DEST_PATH = "./batch/data/realtime"
+    os.makedirs(DEST_PATH, exist_ok=True)
+
+    write_date = datetime.strptime(processed['write_date'], "%Y-%m-%d %H:%M:%S")
+    file_name = write_date.strftime("%Y%m%d") + ".json"
+    full_path = os.path.join(DEST_PATH, file_name)
+
+    record = {
+        "write_date": processed["write_date"],
+        "keywords": json.dumps(processed["keywords"], ensure_ascii=False)
+    }
+
+    if os.path.exists(full_path):
+        with open(full_path, 'r', encoding='utf-8') as f:
+            existing_data = json.load(f)
+    else:
+        existing_data = []
+
+    existing_data.append(record)
+
+    with open(full_path, 'w', encoding='utf-8') as f:
+        json.dump(existing_data, f, ensure_ascii=False, indent=2)
+
+    print(f"[저장 완료] {file_name}에 키워드 저장됨")
+
+
 def process_article(raw_json):
     try:
         data = json.loads(raw_json)
@@ -69,6 +99,7 @@ def process_article(raw_json):
         }
 
         insert_article(processed)
+        save_json_to_local(processed)
 
     except Exception as e:
         print(f"[전처리 실패] {e}")

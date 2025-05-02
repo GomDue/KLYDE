@@ -54,6 +54,7 @@ x-airflow-common:
   build:
     context: .
     dockerfile: Dockerfile.airflow
+  env_file: .env
   ###########################
   environment:
     &airflow-common-env
@@ -82,8 +83,14 @@ x-airflow-common:
     # AIRFLOW__SMTP__SMTP_PASSWORD: '{내 앱 비밀번호}'
     # AIRFLOW__SMTP__SMTP_PORT: 587
     # AIRFLOW__SMTP__SMTP_MAIL_FROM: '{내 Gmail 아이디}'
+    AIRFLOW__EMAIL__EMAIL_BACKEND: airflow.utils.email.send_email_smtp
+    AIRFLOW__SMTP__SMTP_HOST: smtp.gmail.com
+    AIRFLOW__SMTP__SMTP_STARTTLS: True
+    AIRFLOW__SMTP__SMTP_SSL: False
+    AIRFLOW__SMTP__SMTP_USER: ${AIRFLOW__SMTP__SMTP_USER}
+    AIRFLOW__SMTP__SMTP_PASSWORD: ${AIRFLOW__SMTP__SMTP_PASSWORD}
+    AIRFLOW__SMTP__SMTP_PORT: 587
     JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
-
 
   volumes:
     - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
