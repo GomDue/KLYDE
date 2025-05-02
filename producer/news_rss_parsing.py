@@ -1,7 +1,7 @@
 import json
 import psycopg2
 from datetime import datetime
-import preprocessing
+import consumer.preprocessing as preprocessing
 
 # PostgreSQL 연결
 conn = psycopg2.connect(
