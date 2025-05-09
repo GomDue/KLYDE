@@ -9,5 +9,6 @@ CREATE TABLE news_article (
     content TEXT NOT NULL,
     url VARCHAR(200) UNIQUE NOT NULL,
     keywords JSON DEFAULT '[]'::json,
-    embedding VECTOR(1536) NULL
-);
+    embedding VECTOR(1536) NULL,
+    read INTEGER DEFAULT 0
+) OWNER TO ssafy; 

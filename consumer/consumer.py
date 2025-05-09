@@ -32,7 +32,6 @@ def insert_article(data):
             INSERT INTO news_article 
             (title, writer, write_date, content, category, url, keywords, embedding)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            ON CONFLICT (url) DO NOTHING
         """, (
             data['title'],
             data['writer'],
