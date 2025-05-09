@@ -2,6 +2,7 @@ import pendulum
 from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.bash import BashOperator
+from airflow.operators.email import EmailOperator
 from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
 
 local_tz = pendulum.timezone("Asia/Seoul")
@@ -27,6 +28,7 @@ with DAG(
         task_id='spark_daily_report',
         application='/opt/airflow/dags/scripts/spark_daily_report.py',
         conn_id='spark_default',
+        conf={'spark.submit.deployMode': 'client'},
         application_args=['--date', '{{ ds }}'],
     )
 
@@ -36,5 +38,17 @@ with DAG(
             'echo "리포트가 생성되었습니다: {{ ds }} 날짜의 이메일 보내기 "'
         )
     )
+    
+    send_report_email = EmailOperator(
+        task_id='send_report_email',
+        to='ghdtmddid@gmail.com',
+        subject='[뉴스 리포트] {{ ds }} 기준 키워드 분석 결과',
+        html_content="""
+            <p>안녕하세요,</p>
+            <p>{{ ds }} 기준 뉴스 리포트가 생성되었습니다.</p>
+            <p>첨부된 PDF 파일을 확인해주세요.</p>
+        """,
+        files=["/opt/airflow/data/daily_report_{{ ds_nodash }}.pdf"],
+    )
 
-    submit_spark_job >> notify_report_generated
+    submit_spark_job >> notify_report_generated >> send_report_email
