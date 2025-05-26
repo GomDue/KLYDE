@@ -40,4 +40,5 @@ USER airflow
 RUN pip install --no-cache-dir \
     apache-airflow-providers-apache-spark \
     pyspark==3.5.4 \
-    matplotlib
+    matplotlib \ 
+    hdfs

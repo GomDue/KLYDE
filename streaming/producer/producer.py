@@ -94,7 +94,7 @@ NEWS_SOURCES = [
 
 def send_news_to_kafka():
     producer = KafkaProducer(
-        bootstrap_servers='localhost:9092',
+        bootstrap_servers='host.docker.internal:9092',
         value_serializer=lambda v: json.dumps(v, ensure_ascii=False).encode('utf-8')
     )
 
@@ -122,6 +122,7 @@ def send_news_to_kafka():
     print("✅ 모든 뉴스사 데이터 Kafka 전송 완료")
 
 if __name__ == "__main__":
+    print("시작합니다!")
     while True:
         try:
             send_news_to_kafka()

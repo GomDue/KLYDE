@@ -21,6 +21,6 @@ RUN fc-cache -fv
 
 # matplotlib 설치
 RUN pip install --upgrade pip && \
-    pip install matplotlib
+    pip install matplotlib hdfs
 
 USER 1001

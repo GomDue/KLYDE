@@ -15,13 +15,16 @@ from pyflink.common import Configuration
 from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.common.serialization import SimpleStringSchema
 from pyflink.datastream.connectors import FlinkKafkaConsumer
+from hdfs import InsecureClient
 
-FLINK_KAFKA_CONNECTOR_PATH = "file:///usr/local/data-track-pjt/consumer/config/flink-sql-connector-kafka-3.3.0-1.20.jar"
+FLINK_KAFKA_CONNECTOR_PATH = "file:///opt/streaming/config/flink-sql-connector-kafka-3.3.0-1.20.jar"
+HDFS_HOST = "http://hadoop-namenode:9870"
+
 
 def insert_article(data):
     try:
         conn = psycopg2.connect(
-            host="localhost",
+            host="postgres-news",
             dbname="news",
             user="ssafy",
             password="ssafy",
@@ -32,6 +35,7 @@ def insert_article(data):
             INSERT INTO news_article 
             (title, writer, write_date, content, category, url, keywords, embedding)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (url) DO NOTHING
         """, (
             data['title'],
             data['writer'],
@@ -50,38 +54,42 @@ def insert_article(data):
         print(f"[DB 저장 실패] {e}")
 
 
-def save_json_to_local(processed):
-    DEST_PATH = "./batch/data/realtime"
-    os.makedirs(DEST_PATH, exist_ok=True)
-
-    write_date = datetime.strptime(processed['write_date'], "%Y-%m-%d %H:%M:%S")
-    file_name = write_date.strftime("%Y%m%d") + ".json"
-    full_path = os.path.join(DEST_PATH, file_name)
+def save_jsonl_to_hdfs(processed):
+    hdfs_client = InsecureClient(HDFS_HOST, user="hadoop")
+    DEST_PATH = "/data"
+    file_name = datetime.strptime(processed['write_date'], "%Y-%m-%d %H:%M:%S").strftime("%Y%m%d") + ".jsonl"
+    hdfs_file_path = os.path.join(DEST_PATH, file_name)
 
     record = {
         "write_date": processed["write_date"],
-        "keywords": json.dumps(processed["keywords"], ensure_ascii=False)
+        "keywords": processed["keywords"],
+        "category": processed["category"]
     }
 
-    if os.path.exists(full_path):
-        with open(full_path, 'r', encoding='utf-8') as f:
-            existing_data = json.load(f)
-    else:
-        existing_data = []
+    json_line = json.dumps(record) + "\n"
 
-    existing_data.append(record)
+    try:
+        file_list = hdfs_client.list(DEST_PATH)
+        lines = []  
 
-    with open(full_path, 'w', encoding='utf-8') as f:
-        json.dump(existing_data, f, ensure_ascii=False, indent=2)
+        if file_name in file_list:
+            with hdfs_client.read(hdfs_file_path, encoding='utf-8') as reader:
+                lines = reader.readlines()
 
-    print(f"[저장 완료] {file_name}에 키워드 저장됨")
+        lines.append(json_line)
+
+        with hdfs_client.write(hdfs_file_path, overwrite=True, encoding='utf-8') as writer:
+            writer.write(''.join(lines))
+        print(f"[Hadoop 저장 완료] {file_name}에 키워드 저장됨")
+    except Exception as e:
+        print(f"[Hadoop 저장 실패] {e}")
 
 
 def process_article(raw_json):
     try:
         data = json.loads(raw_json)
         article = NewsArticle(**data)
-        
+
         print(f"[Kafka 수신] {data['title'][:50]}")
 
         content = preprocess_content(article.content)
@@ -98,10 +106,11 @@ def process_article(raw_json):
         }
 
         insert_article(processed)
-        save_json_to_local(processed)
+        save_jsonl_to_hdfs(processed)
 
     except Exception as e:
         print(f"[전처리 실패] {e}")
+
 
 def main():
     config = Configuration()
@@ -113,7 +122,7 @@ def main():
         topics='news_topic',
         deserialization_schema=SimpleStringSchema(),
         properties={
-            'bootstrap.servers': 'localhost:9092',
+            'bootstrap.servers': 'host.docker.internal:9092',
             'group.id': 'flink-news-group',
             'auto.offset.reset': 'earliest'
         }
@@ -123,7 +132,8 @@ def main():
 
     stream.map(process_article)
 
-    env.execute("News Kafka → PostgreSQL Pipeline (No JDBC Sink)")
+    env.execute("News Kafka → PostgreSQL & HDFS Pipeline")
+
 
 if __name__ == '__main__':
     main()
