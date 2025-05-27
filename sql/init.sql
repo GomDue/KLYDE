@@ -1,6 +1,3 @@
--- Connect to the 'news' database
-\c news;
-
 -- Create necessary extension
 CREATE EXTENSION IF NOT EXISTS vector;
 
@@ -15,7 +12,8 @@ CREATE TABLE IF NOT EXISTS news_article (
     url TEXT UNIQUE NOT NULL,
     keywords JSON DEFAULT '[]'::json,
     embedding VECTOR(1536) NULL,
-    read INTEGER DEFAULT 0
+    read INTEGER DEFAULT 0,
+    updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Grant privileges on the 'news_article' table to ssafy user
