@@ -1,0 +1,16 @@
+FROM apache/flink:1.20.0-scala_2.12
+
+USER root
+
+RUN apt-get update && apt-get install -y python3 python3-pip python3-dev && \
+    ln -s /usr/bin/python3 /usr/bin/python && \
+    pip3 install --no-cache-dir apache-flink==1.20.0 && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /opt/streaming/consumer
+
+COPY ./requirements/consumer.requirements.txt /opt/streaming/consumer/requirements.txt
+RUN pip3 install --no-cache-dir -r /opt/streaming/consumer/requirements.txt
+
+COPY ./streaming/consumer /opt/streaming/consumer
+COPY ./streaming/config/flink-sql-connector-kafka-3.3.0-1.20.jar /opt/streaming/config/

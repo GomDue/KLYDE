@@ -1,270 +1,200 @@
-# SSAFY 맞춤형 뉴스 데이터 파이프라인 환경 설정 관통 PJT(1) 가이드
+# 📰 **KLYDE - Personalized AI News Curation Platform**
 
-## 최종 목표
+## 1️⃣ **프로젝트 개요**
 
-```
-[Extract]                   [Transform]             [Load]
-Kafka Topic  →  Flink  →  데이터 처리/변환   →  PostgreSQL(DB 저장)
-(JSON or RSS) (스트리밍)  (카테고리 분류)    →  Elasticsearch(검색)
-                  │        (키워드 추출)      
-                  │        (벡터 임베딩)
-                  │
-                  ↓            
-                HDFS  →  Spark  →  리포트 생성  →  HDFS 아카이브
-              (임시저장)  (배치)     (pdf)          (장기 보관)
-```
+**KLYDE**는 *Clarity* + *Glide*의 합성어로, 사용자 맞춤 뉴스를 부드럽고 명확하게 추천하는 **AI 기반 뉴스 플랫폼**입니다. 이 플랫폼은 **실시간 뉴스 수집**, **AI 추천 시스템**, **뉴스 요약 및 번역 기능**을 제공하여 사용자 경험을 향상시킵니다.
 
-## 목차
+### 주요 문제 해결 목표
 
-1. PostgreSQL 설치 및 설정  
-2. 필요한 라이브러리 설치  
+* **뉴스 탐색의 어려움**: 방대한 뉴스 속에서 맞춤형 뉴스 쉽게 찾기.
+* **복잡한 정보 처리**: 뉴스 기사 요약 및 번역으로 사용자 이해 지원.
+* **맞춤형 뉴스 제공**: 사용자의 관심사에 맞춘 개인화된 뉴스 추천.
 
----
+## 2️⃣ **주요 기능**
 
-## 1. PostgreSQL 설치 및 설정
+### 1. **맞춤형 뉴스 제공**
 
-### 1.1. PostgreSQL 설치 (Linux - Ubuntu)
+* **AI 추천 시스템**으로 사용자의 관심사 분석 후 맞춤형 뉴스 피드를 실시간 제공.
+* **카테고리 및 키워드 기반**으로 뉴스 추천.
 
-1. **PostgreSQL 설치**  
+### 2. **AI 챗봇 (Newsie)**
 
-```bash
-sudo apt-get update
-sudo apt-get install postgresql-16 postgresql-contrib-16 postgresql-16-pgvector -y  
-```
+* **뉴스 요약**, **키워드 추출**, **번역**을 제공하는 AI 챗봇.
+* **LangChain**을 이용해 프롬프트 동적 구성 및 정교한 질의 처리.
 
-2. **서비스 상태 확인**  
+### 3. **대시보드**
 
-```bash
-sudo service postgresql status
-```
+* **뉴스 소비** 데이터를 시각화하여 사용자의 열람 기록, 좋아요, 시청 횟수 분석.
+* **개인화된 뉴스 피드**와 **핵심 키워드** 기반 대시보드 제공.
 
-### 1.2. PostgreSQL 데이터베이스 설정
+### 4. **댓글 작성 및 관련 뉴스 탐색**
 
-1. **PostgreSQL 접속**  
-
-```bash
-sudo -i -u postgres
-psql
-```
-
-2. **데이터베이스 생성**  
-
-```sql
-CREATE DATABASE news;
-```
-
-3. **사용자 생성 및 권한 부여**  
-
-```sql
-CREATE USER ssafyuser WITH PASSWORD 'ssafy';
-GRANT ALL PRIVILEGES ON DATABASE news TO ssafyuser;
-```
-
-4. **접속 인증 설정 (pg_hba.conf 수정)**
-
-```conf
-# 파일 위치: /etc/postgresql/16/main/pg_hba.conf
-
-# "local" is for Unix domain socket connections only
-local   all             all                                     md5
-# IPv4 local connections:
-host    all             all             127.0.0.1/32            md5
-# IPv6 local connections:
-host    all             all             ::1/128                 md5
-# Allow replication connections from localhost, by a user with the
-# replication privilege.
-local   replication     all                                     md5
-host    replication     all             127.0.0.1/32            md5
-host    replication     all             ::1/128                 md5
-
-```
-
-5. **데이터베이스 접속 및 테이블 생성**
-
-```bash
-\c news
-```
-
-```sql
--- pgvector 확장 설치 (최초 1회)
-CREATE EXTENSION IF NOT EXISTS vector;
-
--- news_article 테이블 생성
-CREATE TABLE news_article (
-    id SERIAL PRIMARY KEY,
-    title VARCHAR(200) NOT NULL,
-    writer VARCHAR(255) NOT NULL,
-    write_date TIMESTAMP NOT NULL,
-    category VARCHAR(50) NOT NULL,
-    content TEXT NOT NULL,
-    url VARCHAR(200) UNIQUE NOT NULL,
-    keywords JSON DEFAULT '[]'::json,
-    embedding VECTOR(1536) NULL
-);
-```
-
-6. **권한 부여** 
-
-```sql
-ALTER DEFAULT PRIVILEGES IN SCHEMA public
-GRANT ALL ON TABLES TO ssafyuser;
-
-ALTER DEFAULT PRIVILEGES IN SCHEMA public
-GRANT ALL ON SEQUENCES TO ssafyuser;
-GRANT CREATE ON SCHEMA public TO ssafyuser;
-```
-
-(news 데이터베이스 안에서 (news=# 인 상태))
-```sql
-GRANT ALL PRIVILEGES ON TABLE news_article TO ssafyuser;
-GRANT ALL ON TABLE news_article TO ssafyuser;
-GRANT ALL ON SEQUENCE news_article_id_seq TO ssafyuser;
-
-```
-
----
-
-## 2. 필요한 라이브러리 설치
-
-```bash
-python3.10 -m venv ~/venvs/data-pjt
-source ~/venvs/data-pjt/bin/activate
-
-pip install -r requirements.txt
-```
+* 기사에 **댓글 작성** 및 다른 사용자의 의견과 상호작용.
+* **관련 뉴스 탐색**으로 더 많은 정보를 제공.
 
 
-## 3. RSS 토픽과 연결
+## 3️⃣ **기술 스택**
 
-### 1. 목표
+### 1. **Apache Kafka**
 
-Kafka를 통해 실시간 뉴스 데이터를 수집하기 위해, RSS 피드를 주기적으로 파싱하고 해당 내용을 Kafka 토픽으로 전송하는 Producer를 구현합니다.
+* **역할**: 실시간 뉴스 데이터 스트리밍
+* **설명**: 뉴스 RSS 피드를 실시간으로 수집하고 처리.
 
-- RSS 피드에서 최신 뉴스 항목 수집  
-- 뉴스 본문을 크롤링하여 Kafka 토픽으로 전송  
-- JSON 형식으로 Kafka에 직렬화하여 전송
+### 2. **Apache Flink**
 
----
+* **역할**: 실시간 데이터 전처리
+* **설명**: 실시간 데이터 처리 후 HDFS, PostgreSQL, Elasticsearch에 저장.
 
-### 2. Kafka 실행 (Zookeeper 및 Broker 실행)
+### 3. **Apache Spark**
 
-```bash
-# 터미널 1: Zookeeper 실행
-$KAFKA_HOME/bin/zookeeper-server-start.sh $KAFKA_HOME/config/zookeeper.properties
+* **역할**: 배치 데이터 처리 및 분석
+* **설명**: 매일 자정 데이터를 분석하여 PDF 리포트 생성 및 발송.
 
-# 터미널 2: Kafka Broker 실행
-$KAFKA_HOME/bin/kafka-server-start.sh $KAFKA_HOME/config/server.properties
+### 4. **PostgreSQL**
+
+* **역할**: 관계형 데이터베이스
+* **설명**: 뉴스 기사, 사용자 기록 저장 및 Elasticsearch와 동기화.
+
+### 5. **Elasticsearch**
+
+* **역할**: 검색 및 분석 엔진
+* **설명**: 인덱싱된 데이터 검색 및 추천 제공.
+
+### 6. **Django**
+
+* **역할**: 백엔드 웹 프레임워크
+* **설명**: 사용자 인증, 기사 조회, 댓글 작성 등의 API 제공.
+
+### 7. **Vue.js**
+
+* **역할**: 프론트엔드 웹 프레임워크
+* **설명**: 뉴스 소비 및 대시보드 시각화 웹 페이지 제공.
+
+### 8. **Docker & Docker Compose**
+
+* **역할**: 개발 환경 관리 및 서비스 배포
+* **설명**: 각 서비스 컨테이너화하여 독립적 실행 및 서비스 통합.
+
+### 9. **GPT-4o-mini**
+
+* **역할**: AI 기반 챗봇 기능
+* **설명**: 뉴스 요약, 키워드 추출, 번역을 GPT-4o-mini 모델로 제공.
+
+## 4️⃣ **시스템 아키텍처**
+
+**KLYDE**의 데이터 흐름 및 구성 요소 간 관계는 아래의 시스템 아키텍처 다이어그램에서 확인할 수 있습니다.
+
+![System Architecture](public/assets/system_architecture.png)
+
+* **뉴스 수집**: **BeautifulSoup** 및 **Selenium**을 사용하여 RSS 및 웹에서 뉴스 수집.
+* **데이터 처리**: 실시간 데이터는 **Flink**에서 전처리, 배치 데이터는 **Spark**에서 분석.
+* **보고서 생성**: **Spark**로 분석 후 **PDF 리포트** 생성 및 **Gmail**로 발송.
+* **데이터 동기화**: **PostgreSQL**과 **Elasticsearch** 간 실시간 동기화.
+
+
+
+## 5️⃣ **ERD (Entity Relationship Diagram)**
+
+**KLYDE** 데이터베이스 모델을 시각화한 ERD입니다. 각 엔티티 간 관계를 명확히 보여줍니다.
+
+![ERD Diagram](public/assets/ERD.png)
+
+
+## 6️⃣ **프로젝트 구조**
+
+```mk
+project/
+├── backend/                         # 백엔드 서비스 관련 디렉토리
+│   ├── chat/                        # 채팅 관련 디렉토리
+│   ├── dashboard/                   # 대시보드 관련 디렉토리
+│   ├── myproject/                   # 프로젝트 관련 디렉토리
+│   ├── news/                        # 뉴스 관련 디렉토리
+│   ├── users/                       # 사용자 관련 디렉토리
+│   ├── manage.py                    # Django 프로젝트 관리 파일
+│   ├── README.md
+│   └── requirements.txt             # 백엔드 의존성 관리 파일
+│
+├── frontend/                        # 프론트엔드 서비스 관련 디렉토리
+│   ├── public/                      # 정적 파일 (예: 이미지, 아이콘 등)
+│   ├── src/                         # 소스 코드
+│   ├── index.html                   # HTML 파일
+│   ├── jsconfig.json                # JavaScript 설정 파일
+│   ├── package-lock.json            # 패키지 버전 고정 파일
+│   ├── package.json                 # 프론트엔드 의존성 관리 파일
+│   ├── README.md
+│   └── vite.config.js               # Vite 설정 파일
+│
+├── pipeline/                        # 데이터 파이프라인 관련 디렉토리
+│   ├── batch/                       # 배치 처리 관련 디렉토리
+│   │   ├── dags/                    # Airflow DAGs 디렉토리
+│   │   └── data/                    # 데이터 저장
+│   ├── docker/                      # Dockerfile 및 설정 파일
+│   ├── hdfs/                        # HDFS 관련 설정 파일
+│   ├── requirements/                # 배치 처리 의존성 파일
+│   ├── sql/                         # SQL 관련 파일
+│   ├── streaming/                   # 실시간 데이터 스트리밍 관련 디렉토리
+│   ├── docker-compose.yaml 
+│   └── README.md
+│
+├── public/                          # README.md 용 GIF 및 png 저장
+├── .gitignore                       # Git에서 무시할 파일 및 디렉토리 설정
+├── .gitattributes                   # Git 속성 설정
+└── README.md                        # KLYDE 프로젝트 설명 파일
 ```
 
----
 
-### 3. Kafka Producer 코드 예시
+## 7️⃣ **API**
 
-```python
-from kafka import KafkaProducer
-import json
+### 1. **사용자 인증 API**
 
-# Kafka 브로커 주소
-KAFKA_BROKER = "localhost:9092"
-# Kafka 토픽 이름
-TOPIC = "news"
+#### **POST /api/auth/login**
 
-# Kafka Producer 생성 (value는 JSON 직렬화)
-producer = KafkaProducer(
-    bootstrap_servers=KAFKA_BROKER,
-    value_serializer=lambda v: json.dumps(v).encode('utf-8')
-)
+* 사용자가 로그인하여 JWT 토큰을 발급받는 API입니다.
 
-# 예시 데이터 전송
-sample = {"title": "예시 뉴스", "link": "http://example.com"}
-producer.send(TOPIC, sample)
-```
+#### **POST /api/auth/register**
 
----
-
-## 4. Flink 기반 실시간 뉴스 처리
-
-Kafka로부터 전송된 뉴스 데이터를 Flink에서 소비(Consume)하고, 이를 전처리하여 PostgreSQL에 저장하는 실시간 데이터 처리 환경을 구성합니다.
-
----
-
-### 1. 목표
-
-Kafka 토픽(`news`)으로 들어온 뉴스 메시지를 Flink가 수신하여 처리하고, 해당 결과를 PostgreSQL의 `news_article` 테이블에 적재합니다.
-
----
-
-### 2. 핵심 흐름
-
-- Kafka에서 메시지 수신 (`FlinkKafkaConsumer`)
-- 수신된 뉴스 본문(`content`)을 기반으로 전처리 수행
-  - 카테고리 추론: `transform_classify_category`
-  - 키워드 추출: `transform_extract_keywords`
-  - 벡터 임베딩: `transform_to_embedding`
-- 전처리된 결과를 PostgreSQL에 저장 (`INSERT INTO news_article`)
-
----
-
-### 3. 환경 변수 설정 (.env)
-
-```env
-OPENAI_API_KEY=your_openai_api_key
-KAFKA_CONNECTOR_PATH=/path/to/flink-sql-connector-kafka-3.3.0-1.20.jar
-```
-
----
-
-### 4. Kafka Consumer 기본 예시 (Flink 코드)
-
-```python
-from pyflink.datastream import StreamExecutionEnvironment
-from pyflink.common.serialization import SimpleStringSchema
-from pyflink.datastream.connectors import FlinkKafkaConsumer
-import os
-
-env = StreamExecutionEnvironment.get_execution_environment()
-
-# Kafka connector JAR 등록
-kafka_connector_path = os.getenv("KAFKA_CONNECTOR_PATH")
-env.add_jars(f"file://{kafka_connector_path}")
-
-# Kafka Consumer 설정
-kafka_props = {
-    'bootstrap.servers': 'localhost:9092',
-    'group.id': 'flink_consumer_group'
-}
-
-consumer = FlinkKafkaConsumer(
-    topics='news',
-    deserialization_schema=SimpleStringSchema(),
-    properties=kafka_props
-)
-
-# Kafka에서 메시지 수신
-stream = env.add_source(consumer)
-
-"""이후 전처리 및 저장 로직 추가"""
-
-env.execute("Flink Kafka Consumer Job")
-```
-
----
-
-### 5. 뉴스 본문 전처리 방식
-
-Kafka에서 수신한 뉴스 본문(`content`)은 다음과 같은 방식으로 전처리합니다.
-
-1. 키워드 추출: 본문에서 핵심 키워드 5개를 추출  
-2. 벡터 임베딩: OpenAI Embedding API를 이용해 1536차원 벡터 생성
-3. 카테고리 분류: OpenAI API를 활용하여 뉴스의 주제를 자동 분류  
-
-> 자세한 구현은 `preprocessing.py` 파일을 참고하여 추가 구현하세요.  
-> OpenAI API 키가 필요하며, `.env` 파일에 등록되어 있어야 합니다.
+* 새 사용자를 등록하는 API입니다.
 
 
----
+### 2. **기사 관련 API**
 
-## 마무리
+#### **GET /api/articles**
 
-위의 단계들을 차례대로 진행하고 RSS의 뉴스를 잘 수집하고 처리하여 저장하는 것이 목표입니다.  
-이를 시작으로 PostgreSQL, Hadoop, Kafka, Airflow, Elasticsearch를 이용한 SSAFY 맞춤형 뉴스 데이터 파이프라인을 지속적으로 개발하며 프로젝트를 완성하게 됩니다.
+* 관심 있는 카테고리의 뉴스를 검색하는 API입니다.
+
+#### **GET /api/articles/{id}**
+
+* 특정 기사에 대한 상세 정보를 조회하는 API입니다.
+
+
+### 3. **댓글 API**
+
+#### **POST /api/comments**
+
+* 기사에 댓글을 작성하는 API입니다.
+
+#### **GET /api/comments/{article\_id}**
+
+* 특정 기사에 달린 댓글들을 조회하는 API입니다.
+
+
+### 4. **AI 챗봇 (Newsie) API**
+
+#### **POST /api/chat**
+
+* 뉴스에 대한 요약, 키워드 추출 및 번역을 요청하는 API입니다.
+
+
+### 5. **대시보드 API**
+
+#### **GET /api/dashboard**
+
+* 사용자의 열람 기록 및 좋아요 기록을 바탕으로 대시보드 데이터를 조회하는 API입니다.
+
+
+## 8️⃣ **향후 개선 방향**
+
+1. **Elasticsearch 검색 품질 개선**: 문맥 기반 유사도 검색 및 정렬 고도화.
+2. **추천 시스템의 개인화 개선**: 클릭 시간, 조회 이력 등 사용자 행동 데이터 반영.
+3. **대시보드 시각화 개선**: 직관적 UI 및 반응형 대시보드 개선.
+4. **서버 측 페이지네이션**: 현재 방식에서 서버 측 페이지네이션으로 개선.
