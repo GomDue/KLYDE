@@ -1,0 +1,52 @@
+@use "./reset.scss";
+@use "./variable.scss";
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
+
+:root {
+  --color-bg: #f0f4ff;             // 전체 페이지 배경 → 연한 인디고 계열
+  --color-surface: #ffffff;       // 카드 박스 배경 (살짝 남기기 위해 white 유지 가능)
+  --color-text: #111827;
+  --color-text-sub: #6b7280;
+  --color-border: #dbeafe;         // 연한 파란 테두리
+  --color-primary: #4f46e5;        // Toss 느낌의 인디고
+  --color-primary-bg: #e0e7ff;
+  --color-hover: rgba(99, 102, 241, 0.08);
+}
+
+#app {
+  font-weight: normal;
+  color: #1a1a1a;
+  font-family: "Pretendard";
+  font-size: 14px;
+  width: 100%;
+}
+
+body {
+  min-height: 100vh;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+*,
+*::before,
+*::after {
+  padding: 0;
+  margin: 0;
+  font-weight: normal;
+  box-sizing: border-box;
+}
+
+button {
+  cursor: pointer;
+}
+
+h1 {
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.no-data {
+  text-align: center;
+  color: #888;
+  font-size: 16px;
+  padding: 100px;
+}
