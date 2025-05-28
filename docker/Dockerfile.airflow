@@ -38,7 +38,11 @@ USER airflow
 
 # Python 패키지 설치
 RUN pip install --no-cache-dir \
+    apache-airflow-providers-postgres \
     apache-airflow-providers-apache-spark \
     pyspark==3.5.4 \
-    matplotlib \ 
-    hdfs
+    matplotlib \
+    hdfs \
+    apache-airflow-providers-elasticsearch==5.2.0 \
+    pyarrow
+    

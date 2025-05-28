@@ -5,7 +5,6 @@ from airflow.operators.bash import BashOperator
 from airflow.operators.email import EmailOperator
 from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
 
-# Korea timezone을 설정합니다.
 local_tz = pendulum.timezone("Asia/Seoul")
 
 default_args = {

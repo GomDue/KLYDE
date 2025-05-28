@@ -21,6 +21,7 @@ RUN fc-cache -fv
 
 # matplotlib 설치
 RUN pip install --upgrade pip && \
-    pip install matplotlib hdfs
+    pip install matplotlib hdfs && \
+    pip install pyarrow
 
 USER 1001

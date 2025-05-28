@@ -264,6 +264,7 @@ services:
     ports:
       - "9870:9870"
       - "9000:9000"
+      - "50070:50070"
     command: bash -c "/start-hdfs.sh"
     networks:
       - airflow
@@ -344,8 +345,8 @@ services:
     container_name: news-producer
     command: bash -c "python producer.py"
     depends_on:
-      kafka:
-        condition: service_healthy
+      - kafka
+      - jobmanager
     networks:
       - airflow
     restart: always
@@ -375,6 +376,82 @@ services:
     volumes:
       - ./streaming/consumer:/opt/streaming/consumer
       - ./batch/data:/opt/streaming/consumer/data
+
+  elasticsearch1:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.17.1
+    container_name: elasticsearch1
+    environment:
+      - node.name=elasticsearch1
+      - cluster.name=elastic-docker-cluster
+      - discovery.seed_hosts=elasticsearch1,elasticsearch2 
+      - cluster.initial_master_nodes=elasticsearch1,elasticsearch2 
+      - node.roles=master,data,ingest
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+      - xpack.security.enabled=false
+      - network.host=0.0.0.0
+      - TZ=Asia/Seoul
+    ports:
+      - "9200:9200"
+    networks:
+      - airflow
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  elasticsearch2:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.17.1
+    container_name: elasticsearch2
+    environment:
+      - node.name=elasticsearch2
+      - cluster.name=elastic-docker-cluster
+      - discovery.seed_hosts=elasticsearch1,elasticsearch2 
+      - cluster.initial_master_nodes=elasticsearch1,elasticsearch2 
+      - node.roles=master,data,ingest
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+      - xpack.security.enabled=false
+      - network.host=0.0.0.0
+      - TZ=Asia/Seoul
+    ports:
+      - "9201:9200" 
+    networks:
+      - airflow
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9201/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.17.1
+    container_name: kibana
+    environment:
+      - SERVER_NAME=kibana
+      - ELASTICSEARCH_HOSTS=http://elasticsearch1:9200
+      - XPACK_ALERTING_ENABLED=false
+      - XPACK_ACTIONS_ENABLED=false
+      - XPACK_RULE_REGISTRY_WRITE_ENABLED=false
+      - TELEMETRY_ENABLED=false
+      - XPACK_SECURITY_SOLUTION_ENABLED=false
+      - XPACK_INFRA_ENABLED=false
+      - XPACK_LOGS_ENABLED=false
+      - XPACK_ALERTING_ENABLED=false
+      - XPACK_APM_ENABLED=false
+      - XPACK_FLEET_ENABLED=false
+      - XPACK_SECURITY_SOLUTION_ENABLED=false
+      - XPACK_OBSERVABILITY_ENABLED=false
+      - XPACK_REPORTING_ENABLED=false
+      - XPACK_ML_ENABLED=false
+      - TELEMETRY_ENABLED=false
+      - MONITORING_ENABLED=false
+    ports:
+      - 5601:5601 
+    networks:
+      - airflow 
+
 
 volumes:
   news-db-volume:
