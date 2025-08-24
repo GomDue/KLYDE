@@ -1,0 +1,12 @@
+apache-airflow-providers-postgres
+apache-airflow-providers-apache-spark
+apache-airflow-providers-elasticsearch
+
+pyarrow
+python-dotenv
+loguru
+
+matplotlib
+wordcloud
+Pillow
+

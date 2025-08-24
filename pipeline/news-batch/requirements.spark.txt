@@ -1,0 +1,7 @@
+matplotlib
+pyarrow
+
+wordcloud
+Pillow
+
+loguru
