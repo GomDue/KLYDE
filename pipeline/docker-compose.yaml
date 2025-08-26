@@ -4,8 +4,8 @@ x-airflow-common: &airflow-common
     dockerfile: ./docker/Dockerfile.airflow
   environment: &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
-    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://ssafy:ssafy@postgres-news/news
-    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://ssafy:ssafy@postgres-news/news
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:postgres@postgres-news/news
+    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://postgres:postgres@postgres-news/news
     AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
     AIRFLOW__CORE__FERNET_KEY: ''
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
@@ -14,16 +14,11 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__DEFAULT_TIMEZONE: Asia/Seoul
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
     JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
-    HADOOP_CONF_DIR: /opt/hadoop/etc/hadoop
   volumes:
     - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
-    - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
-    - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
-    - ${AIRFLOW_PROJ_DIR:-.}/dags/scripts:/opt/airflow/dags/scripts
     - ${AIRFLOW_PROJ_DIR:-.}/data:/opt/airflow/data
-    - ${AIRFLOW_PROJ_DIR:-.}/output:/opt/airflow/output
-    - ./hdfs/config:/opt/hadoop/etc/hadoop
+    - ${AIRFLOW_PROJ_DIR:-.}/batch.env:/opt/airflow/.env:ro
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on: &airflow-common-depends-on
     redis:
@@ -47,9 +42,9 @@ services:
       - "5434:5432"
     volumes:
       - news-db-volume:/var/lib/postgresql/data
-      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./sql/init_news_schema.sql:/docker-entrypoint-initdb.d/init_news_schema.sql
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "ssafy", "-d", "news"]
+      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "news"]
       interval: 30s
       retries: 10
       start_period: 60s
@@ -151,8 +146,6 @@ services:
     command:
       - -c
       - |
-        mkdir -p /sources/logs /sources/dags /sources/plugins
-        chown -R "${AIRFLOW_UID}:0" /sources/{logs,dags,plugins}
         exec /entrypoint airflow version
     environment:
       <<: *airflow-common-env
@@ -204,6 +197,7 @@ services:
       context: .
       dockerfile: ./docker/Dockerfile.spark
     container_name: spark-master
+    user: "${AIRFLOW_UID:-50000}:0"
     environment:
       - SPARK_MODE=master
       - SPARK_MASTER_HOST=spark-master
@@ -217,9 +211,9 @@ services:
     networks:
       - airflow
     volumes:
-      - ${AIRFLOW_PROJ_DIR:-.}/dags/scripts:/opt/airflow/dags/scripts
-      - ${AIRFLOW_PROJ_DIR:-.}/output:/opt/airflow/output
-      - ${AIRFLOW_PROJ_DIR:-.}/data:/opt/airflow/data
+      - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
+      - ${AIRFLOW_PROJ_DIR:-.}/data/news_summary:/opt/airflow/data
+      - ${AIRFLOW_PROJ_DIR:-.}/batch.env:/opt/airflow/.env:ro
 
   spark-worker:
     <<: *airflow-common
@@ -227,6 +221,7 @@ services:
       context: .
       dockerfile: ./docker/Dockerfile.spark
     container_name: spark-worker
+    user: "${AIRFLOW_UID:-50000}:0"
     environment:
       - SPARK_MODE=worker
       - SPARK_MASTER_URL=spark://spark-master:7077
@@ -237,9 +232,9 @@ services:
     networks:
       - airflow
     volumes:
-      - ${AIRFLOW_PROJ_DIR:-.}/dags/scripts:/opt/airflow/dags/scripts
-      - ${AIRFLOW_PROJ_DIR:-.}/output:/opt/airflow/output
+      - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
       - ${AIRFLOW_PROJ_DIR:-.}/data:/opt/airflow/data
+      - ${AIRFLOW_PROJ_DIR:-.}/batch.env:/opt/airflow/.env:ro
 
   zookeeper:
     image: bitnami/zookeeper:3.9
@@ -248,42 +243,6 @@ services:
       - "2181:2181"
     environment:
       - ALLOW_ANONYMOUS_LOGIN=yes
-    networks:
-      - airflow
-
-  hadoop-namenode:
-    image: apache/hadoop:3.3.5
-    container_name: hadoop-namenode
-    user: root
-    environment:
-      - HADOOP_HOME=/opt/hadoop
-    volumes:
-      - namenode-data:/opt/hadoop/data/nameNode
-      - ./hdfs/config:/opt/hadoop/etc/hadoop
-      - ./hdfs/start-hdfs.sh:/start-hdfs.sh
-    ports:
-      - "9870:9870"
-      - "9000:9000"
-      - "50070:50070"
-    command: bash -c "/start-hdfs.sh"
-    networks:
-      - airflow
-
-  hadoop-datanode1:
-    image: apache/hadoop:3.3.5
-    container_name: hadoop-datanode1
-    user: root
-    environment:
-      - HADOOP_HOME=/opt/hadoop
-    volumes:
-      - datanode-data:/opt/hadoop/data/dataNode
-      - ./hdfs/config:/opt/hadoop/etc/hadoop
-      - ./hdfs/init-datanode.sh:/init-datanode.sh
-    ports:
-      - "9864:9864"
-    depends_on:
-      - hadoop-namenode
-    command: bash -c "/init-datanode.sh"
     networks:
       - airflow
 
@@ -310,49 +269,23 @@ services:
     networks:
       - airflow
 
-  jobmanager:
-    image: flink:1.20.0-scala_2.12
-    container_name: flink-jobmanager
-    command: jobmanager
-    ports:
-      - "8081:8081"
-    environment:
-      - JOB_MANAGER_RPC_ADDRESS=jobmanager
-      - HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
-    volumes:
-      - ./hdfs/config:/opt/hadoop/etc/hadoop
-    networks:
-      - airflow
-
-  taskmanager:
-    image: flink:1.20.0-scala_2.12
-    container_name: flink-taskmanager
-    depends_on:
-      - jobmanager
-    command: taskmanager
-    environment:
-      - JOB_MANAGER_RPC_ADDRESS=jobmanager
-      - HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
-    volumes:
-      - ./hdfs/config:/opt/hadoop/etc/hadoop
-    networks:
-      - airflow
-
   news-producer:
     build:
       context: .
       dockerfile: ./docker/Dockerfile.producer
     container_name: news-producer
-    command: bash -c "python producer.py"
+    command: bash -c "python main.py"
     depends_on:
-      - kafka
-      - jobmanager
+      kafka:
+        condition: service_healthy
+      postgres-news:
+        condition: service_healthy
     networks:
       - airflow
     restart: always
     shm_size: '2g'
     volumes:
-      - ./streaming/producer:/opt/streaming/producer
+      - ./news-pipeline/producer:/opt/news-pipeline
 
   news-consumer:
     build:
@@ -360,22 +293,24 @@ services:
       dockerfile: ./docker/Dockerfile.consumer
     container_name: news-consumer
     user: root
-    command: bash -c "python3 consumer.py"
+    command: bash -c "python main.py"
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - KAFKA_SERVER=${KAFKA_SERVER}
+      - KAFKA_TOPIC=${KAFKA_TOPIC}
+      - KAFKA_GROUP_ID=${KAFKA_GROUP_ID}
+      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS}
     depends_on:
       kafka:
         condition: service_healthy
-      jobmanager:
-        condition: service_started
       postgres-news:
         condition: service_healthy
     networks:
       - airflow
     restart: on-failure
     volumes:
-      - ./streaming/consumer:/opt/streaming/consumer
-      - ./batch/data:/opt/streaming/consumer/data
+      - ./news-pipeline/consumer:/opt/news-pipeline
+      - ./batch/data:/opt/news-pipeline/consumer/data
 
   elasticsearch1:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.17.1
@@ -452,13 +387,8 @@ services:
     networks:
       - airflow 
 
-
 volumes:
   news-db-volume:
-  namenode-data:
-    driver: local
-  datanode-data:
-    driver: local
 
 networks:
   airflow:

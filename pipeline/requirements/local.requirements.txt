@@ -1,20 +1,17 @@
 # Python version: 3.10
-
 # Kafka & RSS
 kafka-python==2.0.2
 feedparser==6.0.11
 beautifulsoup4==4.13.3
 selenium
 
-# Flink & Spark
-apache-flink
+# Spark
 pyspark==3.5.4
 
 # Data/ML Tools
 pandas==1.5.3
 numpy==1.23.5
 matplotlib==3.6.3
-hdfs==2.7.3
 
 # PostgreSQL
 psycopg2-binary==2.9.10
