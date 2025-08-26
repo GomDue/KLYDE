@@ -19,6 +19,7 @@ x-airflow-common: &airflow-common
     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
     - ${AIRFLOW_PROJ_DIR:-.}/data:/opt/airflow/data
     - ${AIRFLOW_PROJ_DIR:-.}/batch.env:/opt/airflow/.env:ro
+    - ./logs/consumer:/opt/news-pipeline/logs
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on: &airflow-common-depends-on
     redis:
@@ -286,6 +287,7 @@ services:
     shm_size: '2g'
     volumes:
       - ./news-pipeline/producer:/opt/news-pipeline
+      - ./logs/producer:/opt/news-pipeline/logs
 
   news-consumer:
     build:
@@ -310,7 +312,7 @@ services:
     restart: on-failure
     volumes:
       - ./news-pipeline/consumer:/opt/news-pipeline
-      - ./batch/data:/opt/news-pipeline/consumer/data
+      - ./logs/consumer:/opt/news-pipeline/logs
 
   elasticsearch1:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.17.1

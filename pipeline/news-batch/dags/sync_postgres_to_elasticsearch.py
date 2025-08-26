@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
-from airflow.providers.elasticsearch.hooks.elasticsearch import ElasticsearchPythonHook  # <-- fixed
+from airflow.providers.elasticsearch.hooks.elasticsearch import ElasticsearchPythonHook
 
 
 local_tz = pendulum.timezone("Asia/Seoul")

@@ -3,6 +3,7 @@ import logging
 import feedparser
 from kafka import KafkaProducer
 from config.settings import settings
+from config.logging import log
 from utils.hashing import hash_url
 from rss.sources import NEWS_SOURCES
 
@@ -29,7 +30,7 @@ def fetch_and_send() -> int:
     for source in NEWS_SOURCES:
         name, rss_url, scraper = source["name"], source["rss_url"], source["scraper"]
 
-        logger.info(f"RSS 파싱: {name}")
+        log.info("RSS parse start: %s", name)
         feed = feedparser.parse(rss_url)
 
         for entry in feed.entries:
@@ -53,9 +54,11 @@ def fetch_and_send() -> int:
                 sent += 1
 
             except Exception as e:
-                logger.warning(f"[{source.name}] 항목 처리 실패: {e}")
+                log.warning("[%s] item send failed: %s", name, e)
+
+        log.info("Send queued: %s count=%d", name, sent)
                 
     producer.flush()
-
-    logger.info(f"전송 완료: {sent}건")
+    log.info("Kafka flush Done")
+    
     return sent
