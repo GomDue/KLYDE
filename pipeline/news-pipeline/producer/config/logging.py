@@ -1,11 +1,13 @@
 import logging
+from config.settings import settings
 
 def setup_logging(level: str = "INFO") -> None:
-    log = logging.getLogger("producer")
-    log.basicConfig(
+    logging.basicConfig(
         level=getattr(logging, level, logging.INFO),
         format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
     )
-    return log
+
+    logging.FileHandler(settings.LOG_PATH, encoding="utf-8")
+    return logging.getLogger("producer")
 
 log = setup_logging()

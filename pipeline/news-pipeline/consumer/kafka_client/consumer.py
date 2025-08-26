@@ -1,14 +1,13 @@
 import json
-import logging
 from kafka import KafkaConsumer
 from dateutil import parser as date_parser
+
 from config.settings import settings
+from config.logging import log
 from models.news import NewsArticle
 from processing.preprocess import preprocess_content
 from db.postgres import insert_postgres
 from db.elastic import insert_elasticsearch
-
-logger = logging.getLogger("consumer")
 
 
 def build_consumer() -> KafkaConsumer:
@@ -23,26 +22,32 @@ def build_consumer() -> KafkaConsumer:
 
 
 def process_article(raw_news) -> None:
-    try:
-        data = json.loads(raw_news)
-        article = NewsArticle(**data)
+    data = json.loads(raw_news)
+    article = NewsArticle(**data)
 
-        print(f"[Kafka 수신] {data['title'][:50]}")
+    log.info("Received: %s", article.title)
 
-        if article.link:
-            processed = {
-                'title': article.title,
-                'writer': article.author or "unknown",
-                'write_date': date_parser.parse(article.published).strftime("%Y-%m-%d %H:%M:%S"),
-                'content': preprocess_content(article.content),
-                'category': "미분류", # transform_classify_category(content),
-                'url': article.link,
-                'keywords': [], # transform_extract_keywords(content),
-                'embedding': None, # transform_to_embedding(content)
-            }
+    if article.link:
+        processed = {
+            "title":      article.title,
+            "writer":     article.author or "Unknown",
+            "write_date": date_parser.parse(article.published).strftime("%Y-%m-%d %H:%M:%S"),
+            "content":    preprocess_content(article.content),
+            "category":   "Unclassified", # transform_classify_category(content),
+            "url":        article.link,
+            "keywords":   [], # transform_extract_keywords(content),
+            "embedding":  None, # transform_to_embedding(content)
+        }
 
+        try:
             insert_postgres(processed)
-            insert_elasticsearch(processed)
+            log.info("DB OK: %s", article.title)
+        except Exception:
+            log.exception("DB insert failed: %s", article.title)
+            return  # DB 실패 시 ES 색인은 건너뜀
 
-    except Exception as e:
-        print(f"[전처리 실패] {e}")
+        try:
+            insert_elasticsearch(processed)
+            log.info("ES OK: %s", article.title)
+        except Exception:
+            log.exception("ES index failed: %s", article.title)

@@ -1,3 +1,4 @@
+import logging
 import pendulum
 from datetime import datetime, timedelta
 from airflow import DAG
@@ -5,29 +6,19 @@ from airflow.operators.python import PythonOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.elasticsearch.hooks.elasticsearch import ElasticsearchPythonHook
 
-
+log = logging.getLogger("daily-report")
 local_tz = pendulum.timezone("Asia/Seoul")
 
-default_args = {
-    "owner": "airflow",
-    "depends_on_past": False,
-    "retries": 1,
-    "retry_delay": timedelta(minutes=5),
-}
 
 def fetch_updated_data_from_postgres(last_run_time: datetime | None = None):
     """
-    Fetch rows from PostgreSQL that were updated after `last_run_time`.
+    Postgres에서 특정 시각 이후에(updated > last_run_time) 수정된 뉴스 행을 가져옴
 
-    Parameters
-    ----------
-    last_run_time : datetime | None
-        The lower bound for the `updated` column. If None, defaults to 1970-01-01.
+    Args:
+        last_run_time: 이 시각 이후에 변경된 행만 조회, None이면 1970-01-01 00:00:00
 
-    Returns
-    -------
-    list[tuple]
-        A list of tuples (id, title, content, updated_at).
+    Returns:
+        list[tuple]: (id, title, content, updated) 형태의 튜플 목록
     """
     if last_run_time is None:
         last_run_time = datetime(1970, 1, 1)
@@ -39,50 +30,58 @@ def fetch_updated_data_from_postgres(last_run_time: datetime | None = None):
         FROM news_article
         WHERE updated > %s
     """
-    updated_data = postgres_hook.get_records(sql=sql, parameters=(last_run_time,))
-    return updated_data
+    rows = postgres_hook.get_records(sql=sql, parameters=(last_run_time,))
+    return rows
 
 
 def sync_data_to_elasticsearch(updated_data: list[tuple]):
     """
-    Upsert updated rows into Elasticsearch using the Python client hook.
+    변경된 데이터를 Elasticsearch에 upsert
 
-    Parameters
-    ----------
-    updated_data : list[tuple]
-        Rows returned by `fetch_updated_data_from_postgres`. Each row is
-        (id, title, content, updated_at).
+    동작 순서:
+    1) 인덱스가 없으면 생성 시도(이미 있으면 무시)
+    2) 각 레코드를 doc_as_upsert=True로 업데이트
+
+    Args:
+        updated_data: (id, title, content, updated) 형태의 튜플 목록
+
+    Returns:
+        None
     """
     if not updated_data:
-        print("[INFO] No new data to update in Elasticsearch.")
+        log.info("No new data to update in Elasticsearch.")
         return
 
-    # Airflow Connection ID: elasticsearch_connection
     es_hook = ElasticsearchPythonHook(elasticsearch_conn_id="elasticsearch_connection")
     es_client = es_hook.get_conn()
     index_name = "news"
 
-    # Create index if not exists (ignore if already exists)
     try:
         es_client.indices.create(index=index_name)
+        log.info("Created index: %s", index_name)
     except Exception:
         pass
 
-    # Upsert each record
+    success = 0
     for record in updated_data:
         doc_id = record[0]
         document = {
-            "title": record[1],
-            "content": record[2],
+            "title":      record[1],
+            "content":    record[2],
             "updated_at": record[3],
         }
-        # ES Python client (v8) style: use doc=..., doc_as_upsert=True
         es_client.update(index=index_name, id=doc_id, doc=document, doc_as_upsert=True)
+        success += 1
 
-    print(f"[INFO] Updated {len(updated_data)} documents in Elasticsearch.")
+    log.info("ES upsert done: docs=%d", success)
 
 
-
+default_args = {
+    "owner": "airflow",
+    "depends_on_past": False,
+    "retries": 1,
+    "retry_delay": timedelta(minutes=5),
+}
 with DAG(
     dag_id="sync_postgres_to_elasticsearch",
     default_args=default_args,
@@ -94,33 +93,27 @@ with DAG(
 ) as dag:
 
     def fetch_updated_data_task(**context):
-        """
-        Airflow task: Pull updated rows since the start of the current data interval
-        and push them to XCom under the key 'updated_data'.
-        """
         last_run_time = context.get("data_interval_start") or datetime(1970, 1, 1)
-        print(f"[INFO] Last run time: {last_run_time}")
+        log.info("Fetch window start=%s", last_run_time)
 
         updated_data = fetch_updated_data_from_postgres(last_run_time)
         context["ti"].xcom_push(key="updated_data", value=updated_data)
 
     def sync_data_to_elasticsearch_task(**context):
-        """
-        Airflow task: Read 'updated_data' from XCom and upsert into Elasticsearch.
-        """
-        updated_data = context["ti"].xcom_pull(
+        rows = context["ti"].xcom_pull(
             task_ids="fetch_updated_data_task", key="updated_data"
         )
-        sync_data_to_elasticsearch(updated_data)
+        log.info("Start ES upsert: rows=%d", len(rows))
+        sync_data_to_elasticsearch(rows)
 
     fetch_task = PythonOperator(
         task_id="fetch_updated_data_task",
-        python_callable=fetch_updated_data_task,
+        python_callable=fetch_updated_data_task
     )
 
     sync_task = PythonOperator(
         task_id="sync_data_to_elasticsearch_task",
-        python_callable=sync_data_to_elasticsearch_task,
+        python_callable=sync_data_to_elasticsearch_task
     )
 
     fetch_task >> sync_task
