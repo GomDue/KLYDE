@@ -41,7 +41,7 @@ def plot_trend(trend_pdf, sum_row, yester_date_str, font_prop):
     fig.tight_layout()
     return fig
 
-def fig_hourly_bar(hours, counts, title, font_prop):
+def plot_hourly_bar(hours, counts, title, font_prop):
     fig, ax = plt.subplots(figsize=(11, 4))
     ax.bar(hours, counts)
 

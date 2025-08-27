@@ -3,7 +3,6 @@ from dotenv import load_dotenv
 from datetime import datetime, timedelta
 import pendulum
 
-
 DOTENV_PATH = "/opt/airflow/.env"
 load_dotenv(dotenv_path=DOTENV_PATH)
 
@@ -20,8 +19,7 @@ def date_strings(report_dt, yester_dt):
     yester_start_ts = f"{yester_date_str} 00:00:00"
     yester_end_ts   = f"{yester_date_str} 23:59:59"
     report_date_str = report_dt.strftime("%Y%m%d")
-    yester_title_str = yester_dt.strftime("%Y-%m-%d")
-    return report_date_str, yester_date_str, yester_start_ts, yester_end_ts, yester_title_str
+    return report_date_str, yester_date_str, yester_start_ts, yester_end_ts
 
 
 # PostgreSQL

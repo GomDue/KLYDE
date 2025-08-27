@@ -32,7 +32,7 @@ services:
   postgres-news:
     build:
       context: .
-      dockerfile: ./docker/Dockerfile.postgre
+      dockerfile: ./docker/Dockerfile.postgres
     container_name: postgres-news
     environment:
       POSTGRES_USER: ${POSTGRESQL_USER}
