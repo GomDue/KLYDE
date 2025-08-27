@@ -5,7 +5,7 @@ from typing import List
 class Settings(BaseSettings):
     # Log
     LOG_LEVEL: str = "INFO"
-    LOG_PATH: str = "/opt/news-pipeline/logs/consumer.log"
+    LOG_PATH: str = "/logs/consumer.log"
 
     # Kafka
     KAFKA_TOPIC: str = "news_topic"

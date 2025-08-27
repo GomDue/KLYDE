@@ -1,7 +1,6 @@
 import json
 from kafka import KafkaConsumer
 from dateutil import parser as date_parser
-
 from config.settings import settings
 from config.logging import log
 from models.news import NewsArticle

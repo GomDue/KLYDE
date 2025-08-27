@@ -4,7 +4,7 @@ from pydantic import BaseSettings
 class Settings(BaseSettings):
     # Log
     LOG_LEVEL: str = "INFO"
-    LOG_PATH: str = "/opt/news-pipeline/logs/producer.log"
+    LOG_PATH: str = "/logs/producer.log"
 
     # Kafka
     KAFKA_TOPIC: str = "news_topic"

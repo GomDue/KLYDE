@@ -36,14 +36,7 @@ pipeline/
 │   ├── Dockerfile.postgre          # PostgreSQL Dockerfile
 │   ├── Dockerfile.producer         # producer.py Dockerfile
 │   └── Dockerfile.spark            # Spark Dockerfile
-├── hdfs/                           # HDFS 관련 파일들
-│   ├── config/                     # HDFS 설정 파일들
-│   │   ├── core-site.xml           # HDFS core-site 설정
-│   │   ├── hdfs-site.xml           # HDFS site 설정
-│   │   ├── mapred-site.xml         # MapReduce 설정
-│   │   └── yarn-site.xml           # YARN 설정
-│   ├── init-datanode.sh            # HDFS 데이터노드 초기화 스크립트
-│   └── start-hdfs.sh               # HDFS 시작 스크립트
+│
 ├── requirements/                   # 의존성 관리 파일들
 │   ├── consumer.requirements.txt   # Kafka 소비자 의존성 파일
 │   ├── local.requirements.txt      # 로컬 환경 의존성 파일

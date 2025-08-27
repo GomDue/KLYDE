@@ -9,4 +9,3 @@ loguru
 matplotlib
 wordcloud
 Pillow
-
