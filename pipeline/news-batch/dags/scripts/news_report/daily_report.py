@@ -1,5 +1,5 @@
 import json
-from loguru import logger
+import logging
 
 from pyspark.sql import SparkSession
 from pyspark.sql.types import ArrayType, StringType
@@ -11,18 +11,7 @@ from io_postgres import *
 from aggregations import *
 from visualization import *
 
-
-'''
-KPI 카드 (총 기사수, 고유 카테고리, TOP 키워드, 전일 대비 증감)
-
-일자 트렌드(최근 14/30일) — dm_daily_summary에서 읽어서 라인차트
-
-시간대 분포(0–23시) — 당일 write_date에서 hour 그룹집계, 바/히트맵
-
-TOP 키워드 바 차트
-
-워드클라우드
-'''
+log = logging.getLogger("daily-report")
 
 
 def _parse_keywords(json_value):
@@ -40,7 +29,7 @@ def _parse_keywords(json_value):
 
 def main():
     report_dt, yester_dt = dates_kst_now()
-    report_date_str, yester_date_str, yester_start_ts, yester_end_ts, yester_title_str = date_strings(report_dt, yester_dt)
+    report_date_str, yester_date_str, yester_start_ts, yester_end_ts = date_strings(report_dt, yester_dt)
     report_path = f"{REPORT_DIR}/daily_report_{report_date_str}.pdf"
 
     # Font
@@ -58,9 +47,9 @@ def main():
     df = load_news_article(spark, yester_start_ts, yester_end_ts)
 
     if df is None:
-        logger.error("No data loaded for previous day.")
+        log.error("No data loaded for previous day.")
         return
-    logger.info("Loaded yesterday rows: {}", df.count())
+    log.info("Loaded yesterday rows: {}", df.count())
     
 
     parse_keywords_udf = udf(_parse_keywords, ArrayType(StringType()))
@@ -69,7 +58,7 @@ def main():
     dm_sum = build_summary_df(df, yester_date_str, spark)
     dm_hour = build_hourly_counts_df(spark, df, yester_date_str)
 
-    # rows for charts
+    # Rows for charts
     kw_rows  = dm_kw.select("keyword", "count").orderBy("count", ascending=False).toPandas().to_dict("records")
     cat_rows = dm_cat.select("category", "count").orderBy("count", ascending=False).toPandas().to_dict("records")
 
@@ -84,20 +73,20 @@ def main():
 
     
     figs = [
-        plot_kpi(sum_row, kw_rows, dod, yester_title_str, fp),
+        plot_kpi(sum_row, kw_rows, dod, report_date_str, fp),
         plot_trend(trend_df, sum_row, yester_date_str, fp),
-        fig_hourly_bar(hours, hour_counts, yester_title_str, fp),
-        plot_keyword_counts(kw_rows, yester_title_str, fp),
-        plot_category_counts(cat_rows, yester_title_str, fp),
-        plot_wordcloud(kw_rows, yester_title_str, FONT_PATH),
+        plot_hourly_bar(hours, hour_counts, report_date_str, fp),
+        plot_keyword_counts(kw_rows, report_date_str, fp),
+        plot_category_counts(cat_rows, report_date_str, fp),
+        plot_wordcloud(kw_rows, report_date_str, FONT_PATH),
     ]
     save_pdf(report_path, figs)
-    logger.info("Report saved: {}", report_path)
+    log.info("Report saved: {}", report_path)
 
     save_df(dm_kw,  DM_KEYWORDS_TABLE, mode="append")
     save_df(dm_cat, DM_CATEGORY_TABLE, mode="append")
     save_df(dm_sum, DM_SUMMARY_TABLE,  mode="append")
-    logger.info("Data Marts persisted. Done.")
+    log.info("Data Marts persisted. Done.")
 
 if __name__ == "__main__":
     main()

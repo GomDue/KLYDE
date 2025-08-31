@@ -18,7 +18,7 @@
 
 ```yaml
 pipeline/
-├── batch/                                              # 배치 처리 및 데이터 파이프라인 오케스트레이션을 위한 디렉토리
+├── news-batch/                                              # 배치 처리 및 데이터 파이프라인 오케스트레이션을 위한 디렉토리
 │   ├── dags/                                           # Airflow DAGs 디렉토리
 │   │   ├── scripts/                                    # 파이프라인 작업을 위한 Python 스크립트들
 │   │   │   ├── postgres_to_elasticsearch_functions.py  # PostgreSQL 데이터를 Elasticsearch로 동기화하는 함수들
@@ -26,38 +26,21 @@ pipeline/
 │   │   ├── daily_report_dag.py                         # 일일 리포트 생성을 위한 Airflow DAG
 │   │   └── sync_postgres_to_elasticsearch.py           # PostgreSQL과 Elasticsearch 간 데이터 동기화
 │   └── data/                                           # 데이터 및 리포트 파일들
-│       ├── news_archive/                               # 아카이브된 뉴스 데이터
-│       ├── realtime/                                   # 실시간 데이터 파일들
-│       ├── daily_report_20250526.pdf                   # 특정 날짜의 리포트 예시
-│       └── daily_report_20250527.pdf
+│       └── news_archive/                               # 아카이브된 뉴스 데이터
+│           ├── daily_report_20250526.pdf               # 특정 날짜의 리포트 예시
+│           └── daily_report_20250527.pdf
+│
 ├── docker/                         # Docker 파일
 │   ├── Dockerfile.airflow          # Airflow Dockerfike
 │   ├── Dockerfile.consumer         # consumer.py Dockerfile
 │   ├── Dockerfile.postgre          # PostgreSQL Dockerfile
 │   ├── Dockerfile.producer         # producer.py Dockerfile
 │   └── Dockerfile.spark            # Spark Dockerfile
-├── hdfs/                           # HDFS 관련 파일들
-│   ├── config/                     # HDFS 설정 파일들
-│   │   ├── core-site.xml           # HDFS core-site 설정
-│   │   ├── hdfs-site.xml           # HDFS site 설정
-│   │   ├── mapred-site.xml         # MapReduce 설정
-│   │   └── yarn-site.xml           # YARN 설정
-│   ├── init-datanode.sh            # HDFS 데이터노드 초기화 스크립트
-│   └── start-hdfs.sh               # HDFS 시작 스크립트
-├── requirements/                   # 의존성 관리 파일들
-│   ├── consumer.requirements.txt   # Kafka 소비자 의존성 파일
-│   ├── local.requirements.txt      # 로컬 환경 의존성 파일
-│   └── producer.requirements.txt   # Kafka 생산자 의존성 파일
-├── sql/                            # SQL 관련 파일들
-│   └── init.sql                    # 데이터베이스 초기화 SQL 스크립트
-├── streaming/                      # 실시간 데이터 처리 관련 파일들
-│   ├── config/                     # 실시간 데이터 스트리밍 설정 파일
+│
+├── news-pipeline/                  # 실시간 데이터 처리 관련 파일
 │   ├── consumer/                   # 실시간 데이터 소비자 관련 코드
-│   │   ├── consumer.py             # Kafka 소비자 코드
-│   │   ├── models.py               # 데이터 모델 정의
-│   │   └── preprocessing.py        # 데이터 전처리 코드
 │   └── producer/                   # 실시간 데이터 생산자 관련 코드
-│       └── producer.py             # Kafka 생산자 코드
+│
 └── README.md                       # 프로젝트 개요 및 설명 파일
 ```
 

@@ -2,7 +2,8 @@ import psycopg2
 from elasticsearch import Elasticsearch
 from config.settings import settings
 
-def get_conn():
+
+def get_postgres_conn():
     return psycopg2.connect(
         host=settings.POSTGRESQL_HOST,
         dbname=settings.POSTGRESQL_DB,
@@ -15,8 +16,7 @@ def get_elastic_conn():
     return Elasticsearch(
         settings.ES_HOSTS,
         headers={
-            "Accept": "application/json",
+            "Accept":       "application/json",
             "Content-Type": "application/json"
         }
     )
-

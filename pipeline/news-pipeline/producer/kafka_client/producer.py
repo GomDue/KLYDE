@@ -3,6 +3,7 @@ import logging
 import feedparser
 from kafka import KafkaProducer
 from config.settings import settings
+from config.logging import log
 from utils.hashing import hash_url
 from rss.sources import NEWS_SOURCES
 
@@ -18,7 +19,7 @@ def build_producer() -> KafkaProducer:
         batch_size=settings.KAFKA_BATCH_SIZE,
         compression_type=settings.KAFKA_COMPRESSION,
         key_serializer=lambda k: k.encode("utf-8"),
-        value_serializer=lambda v: json.dumps(v, ensure_ascii=False).encode('utf-8'),
+        value_serializer=lambda v: json.dumps(v, ensure_ascii=False).encode("utf-8"),
     )
 
 
@@ -29,7 +30,7 @@ def fetch_and_send() -> int:
     for source in NEWS_SOURCES:
         name, rss_url, scraper = source["name"], source["rss_url"], source["scraper"]
 
-        logger.info(f"RSS 파싱: {name}")
+        log.info("RSS parse start: %s", name)
         feed = feedparser.parse(rss_url)
 
         for entry in feed.entries:
@@ -38,24 +39,25 @@ def fetch_and_send() -> int:
                 if not link:
                     continue
 
-                key = hash_url(link)
-                msg = {
-                    "title": entry.get("title"),
-                    "link": link,
+                message = {
+                    "title":       entry.get("title"),
+                    "link":        link,
                     "description": entry.get("summary", "") or entry.get("description", ""),
-                    "published": entry.get("published", "") or entry.get("pubDate", ""),
-                    "author": entry.get("author", None),
-                    "content": scraper(link),
-                    "source": name,
+                    "published":   entry.get("published", "") or entry.get("pubDate", ""),
+                    "author":      entry.get("author", None),
+                    "content":     scraper(link),
+                    "source":      name,
                 }
 
-                producer.send(settings.KAFKA_TOPIC, key=key, value=msg)
+                producer.send(settings.KAFKA_TOPIC, key=hash_url(link), value=message)
                 sent += 1
 
             except Exception as e:
-                logger.warning(f"[{source.name}] 항목 처리 실패: {e}")
+                log.warning("[%s] item send failed: %s", name, e)
+
+        log.info("Send: %s count=%d", name, sent)
                 
     producer.flush()
-
-    logger.info(f"전송 완료: {sent}건")
+    log.info("Kafka flush Done")
+    
     return sent

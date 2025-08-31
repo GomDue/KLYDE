@@ -14,10 +14,10 @@ def plot_kpi(sum_row, kw_rows, dod, title, font_prop):
         top_kw_text = f"{kw_rows[0]['keyword']} ({kw_rows[0]['count']})"
 
     lines = [
-        f"📅 기준일: {title}",
-        f"📰 기사 수: {total:,} (DoD {dod})",
-        f"🏷️ 카테고리: {uniq:,}",
-        f"🔝 Top 키워드: {top_kw_text}",
+        f"기준일: {title}",
+        f"기사 수: {total:,} (DoD {dod})",
+        f"카테고리: {uniq:,}",
+        f"Top 키워드: {top_kw_text}",
     ]
 
     fig, ax = plt.subplots(figsize=(11, 4))
@@ -41,7 +41,7 @@ def plot_trend(trend_pdf, sum_row, yester_date_str, font_prop):
     fig.tight_layout()
     return fig
 
-def fig_hourly_bar(hours, counts, title, font_prop):
+def plot_hourly_bar(hours, counts, title, font_prop):
     fig, ax = plt.subplots(figsize=(11, 4))
     ax.bar(hours, counts)
 
@@ -90,6 +90,19 @@ def plot_category_counts(rows, title_str, font_prop):
 
 def plot_wordcloud(rows, title_str, font_path):
     freqs = {r["keyword"]: int(r["count"]) for r in rows if r.get("keyword")}
+
+    if not freqs:
+        fig, ax = plt.subplots(figsize=(12, 8))
+        ax.text(
+            0.5, 0.5,
+            "No keywords to plot",
+            ha="center", va="center", fontsize=16
+        )
+        ax.set_title(f"{title_str} Word Cloud", fontsize=16)
+        ax.axis("off")
+        fig.tight_layout()
+        return fig
+    
     wc = WordCloud(
         font_path=font_path, 
         width=1400, height=900,

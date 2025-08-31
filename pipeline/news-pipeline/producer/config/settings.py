@@ -1,7 +1,10 @@
 from pydantic import BaseSettings
 
+
 class Settings(BaseSettings):
+    # Log
     LOG_LEVEL: str = "INFO"
+    LOG_PATH: str = "/logs/producer.log"
 
     # Kafka
     KAFKA_TOPIC: str = "news_topic"
@@ -13,6 +16,7 @@ class Settings(BaseSettings):
     KAFKA_LINGER_MS: int
     KAFKA_BATCH_SIZE: int
     KAFKA_COMPRESSION: str = "gzip" # gzip|lz4|snappy|zstd
+
 
     class Config:
         env_file = "producer.env"

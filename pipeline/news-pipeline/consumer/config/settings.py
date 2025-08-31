@@ -1,8 +1,11 @@
 from pydantic import BaseSettings, Field
 from typing import List
 
+
 class Settings(BaseSettings):
+    # Log
     LOG_LEVEL: str = "INFO"
+    LOG_PATH: str = "/logs/consumer.log"
 
     # Kafka
     KAFKA_TOPIC: str = "news_topic"
@@ -23,6 +26,18 @@ class Settings(BaseSettings):
             "http://elasticsearch2:9200",
         ]
     )
+
+    # GPT
+    OPENAI_API_KEY: str
+    GPT_MODEL:str = "gpt-4o-mini"
+    EMBEDDING_MODEL:str = "text-embedding-3-small"
+    NEWS_CATEGORIES = [
+        "SciTech", "Health", "Economy", "Education", "International", "Lifestyle",
+        "Culture", "Accidents", "Society", "Industry", "Sports", "Femcare",
+        "TripLeisure", "Entertainment", "Politics", "Local", "Hobbies",
+    ]
+    NEWS_CATEGORIES_STR: str = ", ".join(NEWS_CATEGORIES)
+
 
     class Config:
         env_file = "consumer.env"
