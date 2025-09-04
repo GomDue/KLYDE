@@ -1,4 +1,4 @@
-# 📰 **KLYDE - Personalized AI News Curation Platform**
+# 📰 **KLYDE**
 
 > 실시간 뉴스와 인사이트를 한눈에 \
 > Clarity + Glide → 명확하고 매끄럽게 뉴스를 탐색하는 AI 기반 플랫폼

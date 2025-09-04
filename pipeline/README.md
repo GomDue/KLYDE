@@ -1,4 +1,4 @@
-# 📰 KLYDE — Real‑time News & Insights Pipeline
+# 📰 KLYDE
 
 ## 1) Overview
 이 문서는 **KLYDE** 프로젝트의 데이터 파이프라인에 대한 설명을 제공합니다. **Kafka**, **Spark**, **PostgreSQL**을 사용하여 실시간 데이터 처리 및 배치 처리를 수행하고, PostgreSQL과 Elasticsearch 간 데이터 동기화 작업을 자동화합니다. 시스템은 확장 가능하고 유지보수 가능한 구조로 설계되었습니다.

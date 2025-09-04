@@ -30,6 +30,7 @@ def _parse_keywords(json_value):
 def main():
     report_dt, yester_dt = dates_kst_now()
     report_date_str, yester_date_str, yester_start_ts, yester_end_ts = date_strings(report_dt, yester_dt)
+    log.info("Target Date: {} ~ {}", yester_start_ts, yester_end_ts)
     report_path = f"{REPORT_DIR}/daily_report_{report_date_str}.pdf"
 
     # Font
